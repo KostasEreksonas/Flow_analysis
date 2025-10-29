@@ -4,17 +4,18 @@ import numpy as np
 
 from sklearn.preprocessing import StandardScaler
 from scapy.all import *
+from rich import print
 
 from classes.PacketInfo import PacketInfo
 from classes.FlowFeatures import FlowFeatures
 
 class FlowClassifier:
     """Real-time network flow analyzer"""
-    def __init__(self, model_path, socketio, active_timeout=60, inactive_timeout=30, inactivity_check_period=5):
+    def __init__(self, classifier_path, anomaly_detector, active_timeout=60, inactive_timeout=30, inactivity_check_period=5):
         """
         Initialize flow classifier
         Args:
-            model_path: Path to XGBoost classifier
+            classifier_path: Path to XGBoost classifier
             socketio: Flask-SocketIO instance for emitting events
             active_timeout: Maximum flow duration before export (seconds)
             inactive_timeout: Maximum inactive period before export (seconds)
@@ -25,13 +26,78 @@ class FlowClassifier:
         self.inactive_timeout = inactive_timeout
         self.inactivity_check_period = inactivity_check_period
         self.inactivity_check_time = time.time()
-        self.socketio = socketio
+
+        # Store flow id's
+        self.flow_id_cache = {}
+        self.exported_flow_count = 0
 
         # Load classifier
-        with open(model_path, 'rb') as file:
-            self.model = pickle.load(file)
+        with open(classifier_path, 'rb') as file:
+            self.classifier = pickle.load(file)
+
+        # Load anomaly detection model
+        with open(anomaly_detector, 'rb') as file:
+            self.detector = pickle.load(file)
 
         self.scaler = StandardScaler()
+
+        self.feature_columns = [
+            'Destination Port',
+            'Flow Duration',
+            'Total Forward Packets',
+            'Total Backward Packets',
+            'Total Length of Forward Packets',
+            'Total Length of Backward Packets',
+            'Forward Packet Length Max',
+            'Forward Packet Length Min',
+            'Forward Packet Length Mean',
+            'Forward Packet Length Standard Deviation',
+            'Backward Packet Length Max',
+            'Backward Packet Length Min',
+            'Backward Packet Length Mean',
+            'Backward Packet Length Standard Deviation',
+            'Flow Bytes/Second',
+            'Flow Packets/Second',
+            'Flow IAT Mean',
+            'Flow IAT Standard Deviation',
+            'Flow IAT Max',
+            'Flow IAT Min',
+            'Forward IAT Total',
+            'Forward IAT Mean',
+            'Forward IAT Standard Deviation',
+            'Forward IAT Max',
+            'Forward IAT Min',
+            'Backward IAT Total',
+            'Backward IAT Mean',
+            'Backward IAT Standard Deviation',
+            'Backward IAT Max',
+            'Backward IAT Min',
+            'Forward PSH Flags',
+            'Backward PSH Flags',
+            'Forward URG Flags',
+            'Backward URG Flags',
+            'Forward Header Length',
+            'Backward Header Length',
+            'Forward Packets/Second',
+            'Backward Packets/Second',
+            'Packet Length Min',
+            'Packet Length Max',
+            'Packet Length Mean',
+            'Packet Length Standard Deviation',
+            'Packet Length Variance',
+            'FIN Flag Count',
+            'SYN Flag Count',
+            'RST Flag Count',
+            'PSH Flag Count',
+            'ACK Flag Count',
+            'URG Flag Count',
+            'CWE Flag Count',
+            'ECE Flag Count',
+            'Down/Up Ratio',
+            'Average Packet Size',
+            'Average Forward Segment Size',
+            'Average Backward Segment Size'
+        ]
 
         self.attacks = [
         'Benign',
@@ -63,18 +129,53 @@ class FlowClassifier:
         else:
             return dst[0], src[0], dst[1], src[1], protocol
 
-    def classify(self, original_flow_key, stats) -> tuple[str, str, int, int, str, dict]:
-        """Classify given flow record"""
-        (src_ip, dst_ip, src_port, dst_port, protocol) = original_flow_key
-
+    def prepare_stats(self, stats):
+        """Prepare statistical data to feed into ML models"""
         stats = np.asarray(stats)
         stats = stats.reshape(-1, 1)
         stats = self.scaler.fit_transform(stats).reshape(1, -1)
+        return stats
 
-        predictions = self.model.predict_proba(stats).reshape(-1, 1)
+    def classify(self, stats) -> dict:
+        """Classify given flow record"""
+        predictions = self.classifier.predict_proba(stats).reshape(-1, 1)
         results = {attack: prob[0] for attack, prob in zip(self.attacks, predictions)}
 
-        return src_ip, src_port, dst_ip, dst_port, protocol, results
+        return results
+
+    def detect_anomalies(self, stats) -> str:
+        """Use isolation forest for anomaly detection"""
+        predictions = self.detector.predict(stats)
+        if predictions == 1:
+            return "Normal"
+        elif predictions == 0:
+            return "Anomalous"
+        else:
+            return "Undefined"
+
+    @staticmethod
+    def print_flow_info(flow_data) -> None:
+        """Pretty print flow statistics"""
+        src_ip, dst_ip, src_port, dst_port, protocol = flow_data["original_flow_key"]
+        print(f"[bold magenta]Flow ID:[/bold magenta] [bold yellow]{flow_data['flow_id']}[/bold yellow]")
+        print(f"[bold magenta]Flow key:[/bold magenta]")
+        print(f"\t[bold magenta]Source IP:[/bold magenta] {src_ip}")
+        print(f"\t[bold magenta]Source port:[/bold magenta] [bold yellow]{src_port}[/bold yellow]")
+        print(f"\t[bold magenta]Destination IP:[/bold magenta] {dst_ip}")
+        print(f"\t[bold magenta]Destination protocol:[/bold magenta] [bold yellow]{dst_port}[/bold yellow]")
+        print(f"\t[bold magenta]Protocol:[/bold magenta] [bold yellow]{protocol}[/bold yellow]")
+        print(
+            f"[bold magenta]Flow (normal or anomalous):[/bold magenta] [bold yellow]{flow_data["anomalies"]}[/bold yellow]")
+        print(f"[bold magenta]Flow type probabilities:[/bold magenta]")
+        results = flow_data['results']
+        for key in results:
+            print(
+                f"\t[bold magenta]{key}[/bold magenta]: [bold yellow]{results[key] * 100:.5f}%[/bold yellow]")
+        print(f"[bold magenta]Reason for termination:[/bold magenta] [bold yellow]{flow_data["reason"]}[/bold yellow]")
+        print(f"[bold magenta]Flow statistics:[/bold magenta]")
+        stats = flow_data['stats']
+        for key in stats:
+            print(f"\t[bold magenta]{key}[/bold magenta]: [bold yellow]{stats[key]}[/bold yellow]")
 
     def check_inactive_flows(self, current_timestamp) -> None:
         """Export flows that exceeded inactive timeout"""
@@ -82,14 +183,27 @@ class FlowClassifier:
             for flow_key in list(self.flow_cache.keys()):
                 last_seen = self.flow_cache[flow_key].get_last_seen_timestamp()
                 if current_timestamp - last_seen > self.inactive_timeout:
-                    stats = self.flow_cache[flow_key].export_flow_statistics()
-                    original_flow_key = self.flow_cache[flow_key].get_original_flow_key()
+                    # Generate flow ID for the exported flow
+                    self.exported_flow_count += 1
+                    self.flow_id_cache[flow_key] = self.exported_flow_count
+
+                    # Export flow statistics
+                    stats = self.flow_cache[flow_key].export_flow_statistics(last_seen)
+                    statistical_feature_dict = dict(zip(self.feature_columns, stats))
+                    stats = self.prepare_stats(stats)
+
+                    # Pretty print flow statistics, classification probabilities and anomaly scores
                     flow_data = {
-                        "results": self.classify(original_flow_key, stats),
-                        "reason": "Inactive Timeout"
+                        "flow_id": self.flow_id_cache[flow_key],
+                        "original_flow_key": self.flow_cache[flow_key].get_original_flow_key(),
+                        "results": self.classify(stats),
+                        "anomalies": self.detect_anomalies(stats),
+                        "reason": "Inactive Timeout",
+                        "stats": statistical_feature_dict
                     }
-                    self.emit_flow_record(flow_data)
-                    #print(f"{flow_data["results"]}, Reason: {flow_data["reason"]}")
+                    self.print_flow_info(flow_data)
+
+                    # Delete flow from flow cache
                     del self.flow_cache[flow_key]
 
             self.inactivity_check_time = current_timestamp
@@ -111,23 +225,37 @@ class FlowClassifier:
 
         # Check for TCP RST/FIN flags for TCP flow termination
         if rst or fin:
-            stats = self.flow_cache[flow_key].export_flow_statistics()
+            self.exported_flow_count += 1
+            self.flow_id_cache[flow_key] = self.exported_flow_count
+            stats = self.flow_cache[flow_key].export_flow_statistics(initial_timestamp)
+            statistical_feature_dict = dict(zip(self.feature_columns, stats))
+            stats = self.prepare_stats(stats)
             reason = "RST" if rst else "FIN"
             flow_data = {
-                "results": self.classify(packet_key, stats),
-                "reason": reason
+                "flow_id": self.flow_id_cache[flow_key],
+                "original_flow_key": self.flow_cache[flow_key].get_original_flow_key(),
+                "results": self.classify(stats),
+                "anomalies": self.detect_anomalies(stats),
+                "reason": reason,
+                "stats": statistical_feature_dict
             }
-            self.emit_flow_record(flow_data)
-            #print(f"{flow_data["results"]}, Reason: {flow_data["reason"]}")
+            self.print_flow_info(flow_data)
             del self.flow_cache[flow_key]
         elif current_timestamp - initial_timestamp > self.active_timeout:
-            stats = self.flow_cache[flow_key].export_flow_statistics()
+            self.exported_flow_count += 1
+            self.flow_id_cache[flow_key] = self.exported_flow_count
+            stats = self.flow_cache[flow_key].export_flow_statistics(initial_timestamp)
+            statistical_feature_dict = dict(zip(self.feature_columns, stats))
+            stats = self.prepare_stats(stats)
             flow_data = {
-                "results": self.classify(packet_key, stats),
-                "reason": "Active Timeout"
+                "flow_id": self.flow_id_cache[flow_key],
+                "original_flow_key": self.flow_cache[flow_key].get_original_flow_key(),
+                "results": self.classify(stats),
+                "anomalies": self.detect_anomalies(stats),
+                "reason": "Active Timeout",
+                "stats": statistical_feature_dict
             }
-            self.emit_flow_record(flow_data)
-            #print(f"{flow_data["results"]}, Reason: {flow_data["reason"]}")
+            self.print_flow_info(flow_data)
             del self.flow_cache[flow_key]
 
             # Initialize new flow in place of expired one and update stats based on first packet
@@ -201,7 +329,3 @@ class FlowClassifier:
 
     def start_capture(self, interface=None, packet_filter="ip"):
         sniff(iface=interface, filter=packet_filter, prn=self.process_packet, store=False)
-
-    def emit_flow_record(self, flow_data):
-        """Emit new flow records for the fronted to capture"""
-        self.socketio.emit('flow', flow_data, namespace='/flows')

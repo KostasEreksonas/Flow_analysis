@@ -253,8 +253,9 @@ class FlowFeatures:
         """Timestamp when a packet was last seen"""
         return self.last_seen
 
-    def export_flow_statistics(self):
+    def export_flow_statistics(self, timestamp):
         """Return a tuple of flow statistics"""
+        self.flow_duration = timestamp - self.timestamp_initial
         return self.dst_port, \
             self.flow_duration, \
             self.total_fwd_packets, \
