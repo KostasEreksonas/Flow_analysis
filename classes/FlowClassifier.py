@@ -204,7 +204,7 @@ class FlowClassifier:
                         "stats": statistical_feature_dict
                     }
                     self.packet_queue.put(flow_data)
-                    #self.print_flow_info(flow_data)
+                    self.print_flow_info(flow_data)
 
                     # Delete flow from flow cache
                     del self.flow_cache[flow_key]
@@ -243,7 +243,7 @@ class FlowClassifier:
                 "stats": statistical_feature_dict
             }
             self.packet_queue.put(flow_data)
-            #self.print_flow_info(flow_data)
+            self.print_flow_info(flow_data)
             del self.flow_cache[flow_key]
         elif current_timestamp - initial_timestamp > self.active_timeout:
             self.exported_flow_count += 1
@@ -260,7 +260,7 @@ class FlowClassifier:
                 "stats": statistical_feature_dict
             }
             self.packet_queue.put(flow_data)
-            #self.print_flow_info(flow_data)
+            self.print_flow_info(flow_data)
             del self.flow_cache[flow_key]
 
             # Initialize new flow in place of expired one and update stats based on first packet
