@@ -215,30 +215,30 @@ class FlowFeatures:
         if network_packet.haslayer(TCP):
             if fin:
                 self.flag_count_FIN += 1
-            elif syn:
+            if syn:
                 self.flag_count_SYN += 1
-            elif rst:
+            if rst:
                 self.flag_count_RST += 1
-            elif psh:
+            if psh:
                 self.flag_count_PSH += 1
-            elif ack:
+            if ack:
                 self.flag_count_ACK += 1
-            elif urg:
+            if urg:
                 self.flag_count_URG += 1
-            elif cwe:
+            if cwe:
                 self.flag_count_CWE += 1
-            elif ece:
+            if ece:
                 self.flag_count_ECE += 1
 
         if self.src_ip == packet_key[0]: # Forward flow
             if psh:
                 self.fwd_PSH_flags += 1
-            elif urg:
+            if urg:
                 self.fwd_URG_flags += 1
         elif self.dst_ip == packet_key[0]: # Backward flow
             if psh:
                 self.bwd_PSH_flags += 1
-            elif urg:
+            if urg:
                 self.bwd_URG_flags += 1
 
     def get_initial_timestamp(self):
