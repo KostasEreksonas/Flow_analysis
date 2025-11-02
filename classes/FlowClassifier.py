@@ -1,6 +1,7 @@
 import pickle
 import pandas as pd
 import numpy as np
+import queue
 
 from sklearn.preprocessing import StandardScaler
 from scapy.all import *
@@ -16,7 +17,7 @@ class FlowClassifier:
         Initialize flow classifier
         Args:
             classifier_path: Path to XGBoost classifier
-            socketio: Flask-SocketIO instance for emitting events
+            anomaly_detector: Path to Isolation Forest model for anomaly detection
             active_timeout: Maximum flow duration before export (seconds)
             inactive_timeout: Maximum inactive period before export (seconds)
             inactivity_check_period: How often check for inactive flows (seconds)
@@ -26,6 +27,7 @@ class FlowClassifier:
         self.inactive_timeout = inactive_timeout
         self.inactivity_check_period = inactivity_check_period
         self.inactivity_check_time = time.time()
+        self.packet_queue = queue.Queue()
 
         # Store flow id's
         self.flow_id_cache = {}
@@ -201,7 +203,8 @@ class FlowClassifier:
                         "reason": "Inactive Timeout",
                         "stats": statistical_feature_dict
                     }
-                    self.print_flow_info(flow_data)
+                    self.packet_queue.put(flow_data)
+                    #self.print_flow_info(flow_data)
 
                     # Delete flow from flow cache
                     del self.flow_cache[flow_key]
@@ -239,7 +242,8 @@ class FlowClassifier:
                 "reason": reason,
                 "stats": statistical_feature_dict
             }
-            self.print_flow_info(flow_data)
+            self.packet_queue.put(flow_data)
+            #self.print_flow_info(flow_data)
             del self.flow_cache[flow_key]
         elif current_timestamp - initial_timestamp > self.active_timeout:
             self.exported_flow_count += 1
@@ -255,11 +259,12 @@ class FlowClassifier:
                 "reason": "Active Timeout",
                 "stats": statistical_feature_dict
             }
-            self.print_flow_info(flow_data)
+            self.packet_queue.put(flow_data)
+            #self.print_flow_info(flow_data)
             del self.flow_cache[flow_key]
 
             # Initialize new flow in place of expired one and update stats based on first packet
-            self.initialize_flow(flow_key, packet_key, packet_size, current_timestamp, header_size, network_packet, flags)
+            self.initialize_flow(flow_key, packet_key, packet_size, current_timestamp, header_size, network_packet, flags)    
         else:
             self.flow_cache[flow_key].update_last_seen_timestamp(current_timestamp)
 
@@ -328,4 +333,5 @@ class FlowClassifier:
             self.initialize_flow(flow_key, packet_key, packet_size, current_timestamp, header_size, network_packet, flags)
 
     def start_capture(self, interface=None, packet_filter="ip"):
-        sniff(iface=interface, filter=packet_filter, prn=self.process_packet, store=False)
+        sniffer = AsyncSniffer(iface=interface, filter=packet_filter, prn=self.process_packet, store=False)
+        sniffer.start()
