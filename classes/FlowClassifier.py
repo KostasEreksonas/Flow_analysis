@@ -160,6 +160,7 @@ class FlowClassifier:
         """Pretty print flow statistics"""
         src_ip, dst_ip, src_port, dst_port, protocol = flow_data["original_flow_key"]
         print(f"[bold magenta]Flow ID:[/bold magenta] [bold yellow]{flow_data['flow_id']}[/bold yellow]")
+        print(f"[bold magenta]Termination timestamp:[/bold magenta] [bold yellow]{flow_data['termination']}[/bold yellow]")
         print(f"[bold magenta]Flow key:[/bold magenta]")
         print(f"\t[bold magenta]Source IP:[/bold magenta] {src_ip}")
         print(f"\t[bold magenta]Source port:[/bold magenta] [bold yellow]{src_port}[/bold yellow]")
@@ -168,12 +169,12 @@ class FlowClassifier:
         print(f"\t[bold magenta]Protocol:[/bold magenta] [bold yellow]{protocol}[/bold yellow]")
         print(
             f"[bold magenta]Flow (normal or anomalous):[/bold magenta] [bold yellow]{flow_data["anomalies"]}[/bold yellow]")
+        print(f"[bold magenta]Reason for termination:[/bold magenta] [bold yellow]{flow_data["reason"]}[/bold yellow]")
         print(f"[bold magenta]Flow type probabilities:[/bold magenta]")
         results = flow_data['results']
         for key in results:
             print(
                 f"\t[bold magenta]{key}[/bold magenta]: [bold yellow]{results[key] * 100:.5f}%[/bold yellow]")
-        print(f"[bold magenta]Reason for termination:[/bold magenta] [bold yellow]{flow_data["reason"]}[/bold yellow]")
         print(f"[bold magenta]Flow statistics:[/bold magenta]")
         stats = flow_data['stats']
         for key in stats:
@@ -201,7 +202,8 @@ class FlowClassifier:
                         "results": self.classify(stats),
                         "anomalies": self.detect_anomalies(stats),
                         "reason": "Inactive Timeout",
-                        "stats": statistical_feature_dict
+                        "stats": statistical_feature_dict,
+                        "termination": time.time()
                     }
                     self.packet_queue.put(flow_data)
                     self.print_flow_info(flow_data)
@@ -230,7 +232,7 @@ class FlowClassifier:
         if rst or fin:
             self.exported_flow_count += 1
             self.flow_id_cache[flow_key] = self.exported_flow_count
-            stats = self.flow_cache[flow_key].export_flow_statistics(initial_timestamp)
+            stats = self.flow_cache[flow_key].export_flow_statistics(current_timestamp)
             statistical_feature_dict = dict(zip(self.feature_columns, stats))
             stats = self.prepare_stats(stats)
             reason = "RST" if rst else "FIN"
@@ -240,7 +242,8 @@ class FlowClassifier:
                 "results": self.classify(stats),
                 "anomalies": self.detect_anomalies(stats),
                 "reason": reason,
-                "stats": statistical_feature_dict
+                "stats": statistical_feature_dict,
+                "termination": time.time()
             }
             self.packet_queue.put(flow_data)
             self.print_flow_info(flow_data)
@@ -248,7 +251,7 @@ class FlowClassifier:
         elif current_timestamp - initial_timestamp > self.active_timeout:
             self.exported_flow_count += 1
             self.flow_id_cache[flow_key] = self.exported_flow_count
-            stats = self.flow_cache[flow_key].export_flow_statistics(initial_timestamp)
+            stats = self.flow_cache[flow_key].export_flow_statistics(current_timestamp)
             statistical_feature_dict = dict(zip(self.feature_columns, stats))
             stats = self.prepare_stats(stats)
             flow_data = {
@@ -257,7 +260,8 @@ class FlowClassifier:
                 "results": self.classify(stats),
                 "anomalies": self.detect_anomalies(stats),
                 "reason": "Active Timeout",
-                "stats": statistical_feature_dict
+                "stats": statistical_feature_dict,
+                "termination": time.time()
             }
             self.packet_queue.put(flow_data)
             self.print_flow_info(flow_data)

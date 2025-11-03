@@ -3,7 +3,8 @@ import queue
 import uvicorn
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from classes.FlowClassifier import FlowClassifier
 
 classifier = 'models/classifier/xgb_clf_multiclass.pkl'
@@ -14,53 +15,13 @@ ids.start_capture()
 
 app = FastAPI()
 
-html = """
-<!DOCTYPE html>
-<html>
-    <head>
-        <title>Chat</title>
-    </head>
-    <body>
-        <h1>WebSocket RT-IDS</h1>
-        <table>
-            <thead>
-                <tr>Flow ID</tr>
-                <tr>Source</tr>
-                <tr>Destination</tr>
-                <tr>Protocol</tr>
-            </thead>
-            <tbody id=flow>
-            </tbody>
-        </table>
-        <script>
-            var ws = new WebSocket("ws://localhost:8000/ws");
-            ws.onopen = function(event) {
-                console.log('Connected to WebSocket');
-            };
-            ws.onmessage = function(event) {
-                data = JSON.parse(event.data);
-                let table = document.getElementById("flow");
-                let row = table.insertRow();
-                let flow_id = row.insertCell(0);
-                let source = row.insertCell(1);
-                let destination = row.insertCell(2);
-                let protocol = row.insertCell(3);
-                flow_id.innerHTML = data['flow_id']
-                source.innerHTML = `${data['original_flow_key'][0]}:${data['original_flow_key'][2]}`
-                destination.innerHTML = `${data['original_flow_key'][1]}:${data['original_flow_key'][3]}`
-                protocol.innerHTML = data['original_flow_key'][4]
-                console.log(data['original_flow_key'][0])
-            };
-            ws.onclose = function(event) {
-                console.log('WebSocket connection closed');
-            };
-        </script>
-    </body>
-</html>
-"""
+# Mount the js directory to serve static files
+app.mount("/js", StaticFiles(directory="js"), name="js")
 
 @app.get("/")
 async def get():
+    with open("index.html", "r") as f:
+        html = f.read()
     return HTMLResponse(html)
 
 @app.websocket("/ws")

@@ -117,8 +117,8 @@ class FlowFeatures:
 
             # Mean/std of forward packet length
             self.fwd_packet_length_mean = self.total_length_fwd_packets / self.total_fwd_packets
-            self.fwd_packet_length_std = math.sqrt((self.total_length_fwd_packets_squared / self.total_fwd_packets) - (
-                    self.total_length_fwd_packets / self.total_fwd_packets)**2)
+            variance = (self.total_length_fwd_packets_squared / self.total_fwd_packets) - (self.total_length_fwd_packets / self.total_fwd_packets) ** 2
+            self.fwd_packet_length_std = math.sqrt(max(0, variance))
 
             # Average forward segment size
             self.average_fwd_segment_size = self.total_length_fwd_packets / self.total_fwd_packets
@@ -134,8 +134,8 @@ class FlowFeatures:
 
             # Mean/std of backward packet length
             self.bwd_packet_length_mean = self.total_length_bwd_packets / self.total_bwd_packets
-            self.bwd_packet_length_std = math.sqrt((self.total_length_bwd_packets_squared / self.total_bwd_packets) - (
-                        self.total_length_bwd_packets / self.total_bwd_packets) ** 2)
+            variance = (self.total_length_bwd_packets_squared / self.total_bwd_packets) - (self.total_length_bwd_packets / self.total_bwd_packets) ** 2
+            self.bwd_packet_length_std = math.sqrt(max(0, variance))
 
             # Average backward segment size
             self.average_bwd_segment_size = self.total_length_bwd_packets / self.total_bwd_packets
@@ -151,8 +151,8 @@ class FlowFeatures:
 
         # Mean, standard deviation and variance of bidirectional flow
         self.packet_length_mean = total_length / total_packets
-        self.packet_length_std = math.sqrt((total_length_squared / total_packets) - (total_length / total_packets) ** 2)
-        self.packet_length_variance = self.packet_length_std ** 2
+        self.packet_length_variance = (total_length_squared / total_packets) - (total_length / total_packets) ** 2
+        self.packet_length_std = math.sqrt(max(0, self.packet_length_variance))
 
         # Average bidirectional segment size
         self.average_packet_size = total_length / total_packets
@@ -166,11 +166,16 @@ class FlowFeatures:
         total_length_of_packets = self.total_length_fwd_packets + self.total_length_bwd_packets
         total_count_of_packets = self.total_fwd_packets + self.total_bwd_packets
 
-        if seconds != 0:
+        if seconds > 0.001:
             self.flow_bytes_per_sec = total_length_of_packets / seconds
             self.flow_packets_per_sec = total_count_of_packets / seconds
             self.fwd_packets_per_second = self.total_fwd_packets / seconds
             self.bwd_packets_per_second = self.total_bwd_packets / seconds
+        else: # For very short flows, 1ms is used as a baseline
+            self.flow_bytes_per_sec = total_length_of_packets / 0.001
+            self.flow_packets_per_sec = total_count_of_packets / 0.001
+            self.fwd_packets_per_second = self.total_fwd_packets / 0.001
+            self.bwd_packets_per_second = self.total_bwd_packets / 0.001
 
     def calculate_header_length(self, packet_key, header) -> None:
         if self.src_ip == packet_key[0]: self.fwd_header_length += header # Forward direction
@@ -178,33 +183,39 @@ class FlowFeatures:
 
     def calculate_iat_statistics(self, packet_key, timestamp) -> None:
         """Calculate inter-arrival time (IAT) statistics for forward and backward flows"""
-        iat = timestamp - self.timestamp
         total_packets = self.total_fwd_packets + self.total_bwd_packets
+        
+        if total_packets < 2:
+            self.timestamp = timestamp
+            return
+        
+        iat = timestamp - self.timestamp
         self.flow_IAT_total += iat
         self.flow_IAT_total_squared += iat ** 2
-        if self.flow_IAT_min == 0 or self.flow_IAT_min > timestamp: self.flow_IAT_min = timestamp
-        if self.flow_IAT_max < timestamp: self.flow_IAT_max = timestamp
-        self.flow_IAT_mean = self.flow_IAT_total / total_packets
-        self.flow_IAT_std = math.sqrt((self.flow_IAT_total_squared / total_packets) - (self.flow_IAT_total / total_packets)**2)
+        if self.flow_IAT_min == 0 or self.flow_IAT_min > iat: self.flow_IAT_min = iat
+        if self.flow_IAT_max < iat: self.flow_IAT_max = iat
+        self.flow_IAT_mean = self.flow_IAT_total / (total_packets - 1)
+        variance = (self.flow_IAT_total_squared / (total_packets - 1)) - (self.flow_IAT_total / (total_packets - 1)) ** 2
+        self.flow_IAT_std = math.sqrt(max(0, variance))
 
         if self.src_ip == packet_key[0]: # Forward direction
-            self.fwd_IAT_total += iat
-            self.fwd_IAT_total_squared += iat ** 2
-            if self.fwd_IAT_min == 0 or self.fwd_IAT_min > timestamp: self.fwd_IAT_min = timestamp
-            if self.fwd_IAT_max < timestamp: self.fwd_IAT_max = timestamp
-            self.fwd_IAT_mean = self.fwd_IAT_total / self.total_fwd_packets
-            self.fwd_IAT_std = math.sqrt(
-                (self.fwd_IAT_total_squared / self.total_fwd_packets) - (
-                        self.fwd_IAT_total / self.total_fwd_packets) ** 2)
+            if self.total_fwd_packets > 1:
+                self.fwd_IAT_total += iat
+                self.fwd_IAT_total_squared += iat ** 2
+                if self.fwd_IAT_min == 0 or self.fwd_IAT_min > iat: self.fwd_IAT_min = iat
+                if self.fwd_IAT_max < iat: self.fwd_IAT_max = iat
+                self.fwd_IAT_mean = self.fwd_IAT_total / (self.total_fwd_packets - 1)
+                variance = (self.fwd_IAT_total_squared / (self.total_fwd_packets - 1)) - (self.fwd_IAT_total / (self.total_fwd_packets - 1)) ** 2
+                self.fwd_IAT_std = math.sqrt(max(0, variance)) 
         elif self.dst_ip == packet_key[0]: # Backward direction
-            self.bwd_IAT_total += iat
-            self.bwd_IAT_total_squared += iat ** 2
-            if self.bwd_IAT_min == 0 or self.bwd_IAT_min > timestamp: self.bwd_IAT_min = timestamp
-            if self.bwd_IAT_max < timestamp: self.bwd_IAT_max = timestamp
-            self.bwd_IAT_mean = self.bwd_IAT_total / self.total_bwd_packets
-            self.bwd_IAT_std = math.sqrt(
-                (self.bwd_IAT_total_squared / self.total_bwd_packets) - (
-                            self.bwd_IAT_total / self.total_bwd_packets) ** 2)
+            if self.total_bwd_packets > 1:
+                self.bwd_IAT_total += iat
+                self.bwd_IAT_total_squared += iat ** 2
+                if self.bwd_IAT_min == 0 or self.bwd_IAT_min > iat: self.bwd_IAT_min = iat
+                if self.bwd_IAT_max < iat: self.bwd_IAT_max = iat
+                self.bwd_IAT_mean = self.bwd_IAT_total / (self.total_bwd_packets - 1)
+                variance = (self.bwd_IAT_total_squared / (self.total_bwd_packets - 1)) - (self.bwd_IAT_total / (self.total_bwd_packets - 1)) ** 2
+                self.bwd_IAT_std = math.sqrt(max(0, variance)) 
 
         # Since IAT is measured between subsequent packets, update self timestamp with a timestamp of a current packet
         self.timestamp = timestamp
