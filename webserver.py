@@ -22,14 +22,34 @@ html = """
     </head>
     <body>
         <h1>WebSocket RT-IDS</h1>
-        </ul>
+        <table>
+            <thead>
+                <tr>Flow ID</tr>
+                <tr>Source</tr>
+                <tr>Destination</tr>
+                <tr>Protocol</tr>
+            </thead>
+            <tbody id=flow>
+            </tbody>
+        </table>
         <script>
             var ws = new WebSocket("ws://localhost:8000/ws");
             ws.onopen = function(event) {
                 console.log('Connected to WebSocket');
             };
             ws.onmessage = function(event) {
-                console.log(event.data)
+                data = JSON.parse(event.data);
+                let table = document.getElementById("flow");
+                let row = table.insertRow();
+                let flow_id = row.insertCell(0);
+                let source = row.insertCell(1);
+                let destination = row.insertCell(2);
+                let protocol = row.insertCell(3);
+                flow_id.innerHTML = data['flow_id']
+                source.innerHTML = `${data['original_flow_key'][0]}:${data['original_flow_key'][2]}`
+                destination.innerHTML = `${data['original_flow_key'][1]}:${data['original_flow_key'][3]}`
+                protocol.innerHTML = data['original_flow_key'][4]
+                console.log(data['original_flow_key'][0])
             };
             ws.onclose = function(event) {
                 console.log('WebSocket connection closed');
@@ -50,7 +70,7 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             try:
                 data = ids.packet_queue.get_nowait()
-                await websocket.send_json(f"Message text was: {data}")
+                await websocket.send_json(data)
             except queue.Empty:
                 await asyncio.sleep(0.1)
     except WebSocketDisconnect:

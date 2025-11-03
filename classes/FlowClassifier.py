@@ -141,7 +141,7 @@ class FlowClassifier:
     def classify(self, stats) -> dict:
         """Classify given flow record"""
         predictions = self.classifier.predict_proba(stats).reshape(-1, 1)
-        results = {attack: prob[0] for attack, prob in zip(self.attacks, predictions)}
+        results = {attack: float(prob[0]) for attack, prob in zip(self.attacks, predictions)}
 
         return results
 
