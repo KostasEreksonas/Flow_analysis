@@ -101,21 +101,9 @@ function openModal(flowData) {
 	// Parse the stored JSON data
 	const results = JSON.parse(flowData.results);
 	const stats = JSON.parse(flowData.stats);
-    
+
 	let content = `<h3>Flow ID: ${flowData['flowId']}</h3>`;
-	content += "<h1>Statistical Features</h1>";
-	content += "<table class=table>";
-	content += "<thead>";
-	content += "<tr><th>Feature Name</th>";
-	content += "<th>Value</th></th>";
-	content += "</thead>";
-	content += "<tbody>";
-	for (const key in stats){
-		content += `<tr><td>${key}</td><td>${stats[key]}</td></tr>`
-	}
-	content += "</tbody>";
-	content += "</table>";
-	
+
 	content += "<h1>Attack Probabilites</h1>";
 	content += "<table class=table>";
 	content += "<thead>";
@@ -125,6 +113,19 @@ function openModal(flowData) {
 	content += "<tbody>";
 	for (const key in results){
 		content += `<tr><td>${key}</td><td>${results[key]}</td></tr>`
+	}
+	content += "</tbody>";
+	content += "</table>";
+
+	content += "<h1>Statistical Features</h1>";
+	content += "<table class=table>";
+	content += "<thead>";
+	content += "<tr><th>Feature Name</th>";
+	content += "<th>Value</th></th>";
+	content += "</thead>";
+	content += "<tbody>";
+	for (const key in stats){
+		content += `<tr><td>${key}</td><td>${stats[key]}</td></tr>`
 	}
 	content += "</tbody>";
 	content += "</table>";
