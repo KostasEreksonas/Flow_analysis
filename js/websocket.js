@@ -1,63 +1,43 @@
-const src_flow_counts = {}; // Flow counts instantiated by source IP
-const dst_flow_counts = {}; // Flow counts instantiated by destination IP
+class FlowChart {
+    constructor(ctx, config) {
+        // Deep copy to detach template config
+        this.chart = new Chart(ctx, JSON.parse(JSON.stringify(config)));
+    }
+
+    update(label, value) {
+        const { labels, datasets } = this.chart.data;
+        const index = labels.indexOf(label);
+        if (index === -1) {
+            labels.push(label);
+            datasets[0].data.push(value);
+        } else {
+            datasets[0].data[index] = value;
+        }
+        this.chart.update();
+    }
+}
+
+const config = {
+	type: 'bar',
+	data: {
+		labels: [],  // Source IP addresses
+		datasets: [{
+			label: 'Flow Count',
+			data: [],  // Counts per IP
+			backgroundColor: 'rgba(56, 48, 191, 0.8)',
+			borderColor: 'rgba(27, 6, 11, 0.8)'
+		}]
+	}
+}
 
 const source_flow_graph = document.getElementById('src_chart').getContext('2d');
 const destination_flow_graph = document.getElementById('dst_chart').getContext('2d');
 
-const source_config = {
-	type: 'bar',
-	data: {
-		labels: [],  // Source IP addresses
-		datasets: [{
-			label: 'Flow Count',
-			data: [],  // Counts per IP
-			backgroundColor: 'rgba(56, 48, 191, 0.8)',
-			borderColor: 'rgba(27, 6, 11, 0.8)'
-		}]
-	}
-}
+const src_chart = new FlowChart(source_flow_graph, config);
+const dst_chart = new FlowChart(destination_flow_graph, config);
 
-const destination_config = {
-	type: 'bar',
-	data: {
-		labels: [],  // Source IP addresses
-		datasets: [{
-			label: 'Flow Count',
-			data: [],  // Counts per IP
-			backgroundColor: 'rgba(56, 48, 191, 0.8)',
-			borderColor: 'rgba(27, 6, 11, 0.8)'
-		}]
-	}
-}
-
-const src_chart = new Chart(source_flow_graph, source_config);
-const dst_chart = new Chart(destination_flow_graph, destination_config);
-
-function update_src_chart(src_ip, count){
-	const index = src_chart.data.labels.indexOf(src_ip);
-
-	if (index === -1) {
-		src_chart.data.labels.push(src_ip);
-    	src_chart.data.datasets[0].data.push(count);
-	} else {
-		src_chart.data.datasets[0].data[index] = count;
-	}
-
-	src_chart.update();
-}
-
-function update_dst_chart(dst_ip, count){
-	const index = dst_chart.data.labels.indexOf(dst_ip);
-
-	if (index === -1) {
-		dst_chart.data.labels.push(dst_ip);
-    	dst_chart.data.datasets[0].data.push(count);
-	} else {
-		dst_chart.data.datasets[0].data[index] = count;
-	}
-
-	dst_chart.update();
-}
+const src_flow_counts = {}; // Flow counts instantiated by source IP
+const dst_flow_counts = {}; // Flow counts instantiated by destination IP
 
 var ws = new WebSocket("ws://localhost:8000/ws");
 
@@ -110,20 +90,12 @@ ws.onmessage = function(event) {
 	extended_stats.appendChild(button);
 
 	src_ip = data['original_flow_key'][0];
-	if (src_ip in src_flow_counts) {
-		src_flow_counts[src_ip] += 1;
-	} else {
-		src_flow_counts[src_ip] = 1;
-	}
-	update_src_chart(src_ip, src_flow_counts[src_ip]);
+    src_flow_counts[src_ip] = (src_flow_counts[src_ip] || 0) + 1;
+    src_chart.update(src_ip, src_flow_counts[src_ip]);
 
-	dst_ip = data['original_flow_key'][1];
-	if (dst_ip in dst_flow_counts) {
-		dst_flow_counts[dst_ip] += 1;
-	} else {
-		dst_flow_counts[dst_ip] = 1;
-	}
-	update_dst_chart(dst_ip, dst_flow_counts[dst_ip]);
+    dst_ip = data['original_flow_key'][1];
+    dst_flow_counts[dst_ip] = (dst_flow_counts[dst_ip] || 0) + 1;
+    dst_chart.update(dst_ip, dst_flow_counts[dst_ip]);
 };
 
 ws.onclose = function(event) {
@@ -151,7 +123,7 @@ function openModal(flowData) {
 	content += "</thead>";
 	content += "<tbody>";
 	for (const key in results){
-		content += `<tr><td>${key}</td><td>${results[key]}</td></tr>`
+		content += `<tr><td>${key}</td><td>${(results[key] * 100).toFixed(2)}%</td></tr>`
 	}
 	content += "</tbody>";
 	content += "</table>";
@@ -181,15 +153,3 @@ function openModal(flowData) {
 function closeModal() {
     document.getElementById('flowModal').style.display = 'none';
 }
-
-// Bar chart
-let data = {
-	labels: [],
-        datasets: [{
-        	label: 'Sample Bar Chart',
-                data: [],
-                backgroundColor: 'rgba(70, 192, 192, 0.6)',
-                borderColor: 'rgba(150, 100, 255, 1)',
-                borderWidth: 1
-        }]
-};
