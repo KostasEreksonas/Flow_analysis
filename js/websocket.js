@@ -119,11 +119,11 @@ function openModal(flowData) {
 	content += "<h1 class=\"text-center\">Attack Probabilites</h1>";
 	content += "<table class=\"table table-bordered table-striped table-hover\">";
 	content += "<thead>";
-	content += "<tr><th scope=\"col\">Attack</th><th scope=\"col\">Probability</th></th>";
+	content += "<tr class=\"text-center\"><th scope=\"col\">Attack</th><th scope=\"col\">Probability</th></th>";
 	content += "</thead>";
 	content += "<tbody>";
 	for (const key in results){
-		content += `<tr><td>${key}</td><td>${(results[key] * 100).toFixed(2)}%</td></tr>`
+		content += `<tr class=\"text-center\"><td>${key}</td><td>${(results[key] * 100).toFixed(2)}%</td></tr>`
 	}
 	content += "</tbody>";
 	content += "</table>";
@@ -133,11 +133,11 @@ function openModal(flowData) {
 	content += "<h1 class=\"text-center\">Statistical Features</h1>";
 	content += "<table class=\"table table-bordered table-striped table-hover\">";
 	content += "<thead>";
-	content += "<tr><th scope=\"col\">Feature Name</th><th scope=\"col\">Value</th></th>";
+	content += "<tr class=\"text-center\"><th scope=\"col\">Feature Name</th><th scope=\"col\">Value</th></th>";
 	content += "</thead>";
 	content += "<tbody>";
 	for (const key in stats){
-		content += `<tr><td>${key}</td><td>${stats[key]}</td></tr>`
+		content += `<tr class=\"text-center\"><td>${key}</td><td>${stats[key]}</td></tr>`
 	}
 	content += "</tbody>";
 	content += "</table>";
