@@ -180,7 +180,7 @@ class FlowClassifier:
         for key in stats:
             print(f"\t[bold magenta]{key}[/bold magenta]: [bold yellow]{stats[key]}[/bold yellow]")
 
-    def check_inactive_flows(self, current_timestamp) -> None:
+    def check_inactive_flows(self, current_timestamp, pid, pname) -> None:
         """Export flows that exceeded inactive timeout"""
         if current_timestamp - self.inactivity_check_time > self.inactivity_check_period:
             for flow_key in list(self.flow_cache.keys()):
@@ -203,7 +203,9 @@ class FlowClassifier:
                         "anomalies": self.detect_anomalies(stats),
                         "reason": "Inactive Timeout",
                         "stats": statistical_feature_dict,
-                        "termination": time.time()
+                        "termination": time.time(),
+                        "pid": pid,
+                        "pname": pname
                     }
                     self.packet_queue.put(flow_data)
                     self.print_flow_info(flow_data)
@@ -221,7 +223,7 @@ class FlowClassifier:
         self.flow_cache[flow_key].calculate_iat_statistics(packet_key, current_timestamp)
         self.flow_cache[flow_key].count_flag_statistics(network_packet, flags, packet_key)
 
-    def process_existing_flow(self, flow_key, packet_key, packet_size, current_timestamp, header_size, network_packet, flags, rst, fin) -> None:
+    def process_existing_flow(self, flow_key, packet_key, packet_size, current_timestamp, header_size, network_packet, flags, rst, fin, pid, pname) -> None:
         """Update existing flow or export if terminated/expired"""
         initial_timestamp = self.flow_cache[flow_key].get_initial_timestamp()
 
@@ -243,7 +245,9 @@ class FlowClassifier:
                 "anomalies": self.detect_anomalies(stats),
                 "reason": reason,
                 "stats": statistical_feature_dict,
-                "termination": time.time()
+                "termination": time.time(),
+                "pid": pid,
+                "pname": pname
             }
             self.packet_queue.put(flow_data)
             self.print_flow_info(flow_data)
@@ -261,7 +265,9 @@ class FlowClassifier:
                 "anomalies": self.detect_anomalies(stats),
                 "reason": "Active Timeout",
                 "stats": statistical_feature_dict,
-                "termination": time.time()
+                "termination": time.time(),
+                "pid": pid,
+                "pname": pname
             }
             self.packet_queue.put(flow_data)
             self.print_flow_info(flow_data)
@@ -327,11 +333,15 @@ class FlowClassifier:
         packet_key = p.get_packet_key()
         flow_key = self.sort_key(packet_key)
 
+        # Get process statistics
+        pid = p.get_pid()
+        pname = p.get_process_name()
+
         # Periodically check and export inactive flows
-        self.check_inactive_flows(current_timestamp)
+        self.check_inactive_flows(current_timestamp, pid, pname)
 
         if flow_key in self.flow_cache.keys():
-            self.process_existing_flow(flow_key, packet_key, packet_size, current_timestamp, header_size, network_packet, flags, rst, fin)
+            self.process_existing_flow(flow_key, packet_key, packet_size, current_timestamp, header_size, network_packet, flags, rst, fin, pid, pname)
         else:
             # Initialize new flow record (if no flow record with a given key exists) and update statistics based on first packet
             self.initialize_flow(flow_key, packet_key, packet_size, current_timestamp, header_size, network_packet, flags)

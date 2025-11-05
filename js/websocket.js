@@ -1,6 +1,5 @@
 class FlowChart {
     constructor(ctx, config) {
-        // Deep copy to detach template config
         this.chart = new Chart(ctx, JSON.parse(JSON.stringify(config)));
     }
 
@@ -30,9 +29,11 @@ const config = {
 	}
 }
 
+// Get html elements for each graph
 const source_flow_graph = document.getElementById('src_chart').getContext('2d');
 const destination_flow_graph = document.getElementById('dst_chart').getContext('2d');
 
+// Initialize chart objects
 const src_chart = new FlowChart(source_flow_graph, config);
 const dst_chart = new FlowChart(destination_flow_graph, config);
 
@@ -48,12 +49,17 @@ ws.onopen = function(event) {
 ws.onmessage = function(event) {
 	data = JSON.parse(event.data);
 
+    // Get date of an extracted flow
 	let date = new Date(data['termination'] * 1000);
-	let hours = date.getHours();
+	let year = date.getFullYear();
+	let month = "0" + date.getMonth();
+	let day = "0" + date.getDay();
+	let hours = "0" + date.getHours();
 	let minutes = "0" + date.getMinutes();
 	let seconds = "0" + date.getSeconds();
-	let formattedTime = hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2)
+	let formattedTime = year + "-" + month.substr(-2) + "-" + day.substr(-2) + " " + hours.substr(-2) + ':' + minutes.substr(-2) + ':' + seconds.substr(-2)
 
+    // Create table of flow records
 	let table = document.getElementById("flow");
 	let row = table.insertRow(0); // Latest flow records will be inserted at the top of the table
 	let flow_id = row.insertCell(0);
@@ -61,9 +67,12 @@ ws.onmessage = function(event) {
 	let source = row.insertCell(2);
 	let destination = row.insertCell(3);
 	let protocol = row.insertCell(4);
-	let anomaly = row.insertCell(5);
-	let termination = row.insertCell(6);
-	let extended_stats = row.insertCell(7);
+	let termination = row.insertCell(5);
+	let pid = row.insertCell(6);
+	let pname = row.insertCell(7);
+	let anomaly = row.insertCell(8);
+	let classification = row.insertCell(9);
+	let extended_stats = row.insertCell(10);
 
 	flow_id.innerHTML = data['flow_id'];
 	timestamp.innerHTML = formattedTime;
@@ -72,8 +81,20 @@ ws.onmessage = function(event) {
 	protocol.innerHTML = data['original_flow_key'][4];
 	anomaly.innerHTML = data['anomalies'];
 	termination.innerHTML = data['reason'];
+	if (data['pid'] == null) {
+        pid.innerHTML = "Undefined";
+	} else {
+	    pid.innerHTML = data['pid'];
+	}
+	if (data['pname'] === "") {
+        pname.innerHTML = "Undefined";
+	} else {
+	    pname.innerHTML = data['pname'];
+	}
+	classification.innerHTML = Object.keys(data['results'])[0];
 	//console.log(data);
 
+    // Create button for extended statistics
 	let button = document.createElement('button');
 	button.textContent = 'Details';
 	button.className = 'btn btn-primary';
@@ -89,6 +110,7 @@ ws.onmessage = function(event) {
 	
 	extended_stats.appendChild(button);
 
+    // Update charts
 	src_ip = data['original_flow_key'][0];
     src_flow_counts[src_ip] = (src_flow_counts[src_ip] || 0) + 1;
     src_chart.update(src_ip, src_flow_counts[src_ip]);

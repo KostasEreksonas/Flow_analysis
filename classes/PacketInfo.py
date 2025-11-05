@@ -252,6 +252,14 @@ class PacketInfo:
         }
         return self.src_ip, self.src_port, self.dst_ip, self.dst_port, self.protocol, self.timestamp, self.pid, self.p_name, self.packet_size, self.header_size, self.payload_size, self.window_size, found_flags
 
+    def get_pid(self):
+        """Return process id"""
+        return self.pid
+
+    def get_process_name(self):
+        """Return process name"""
+        return self.p_name
+
     def get_packet_key(self):
         """Get flow key from a packet"""
         return self.src_ip, self.dst_ip, self.src_port, self.dst_port, self.protocol
