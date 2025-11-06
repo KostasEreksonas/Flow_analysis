@@ -26,3 +26,7 @@ A real time flow analysis tool that collects transport layer protocol metadata a
 6. Start webserver (as root):
 
 `python3 webserver.py`
+
+7. Start interface from a web browser:
+
+`127.0.0.1:8000`
