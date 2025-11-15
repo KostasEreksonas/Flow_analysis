@@ -153,7 +153,6 @@ class FlowClassifier:
         elif predictions == -1:
             return "Anomalous"
         else:
-            print(predictions)
             return "Undefined"
 
     @staticmethod

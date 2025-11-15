@@ -224,33 +224,21 @@ class FlowFeatures:
         """Count tcp flags"""
         (fin, syn, rst, psh, ack, urg, cwe, ece) = flags
         if network_packet.haslayer(TCP):
-            if fin:
-                self.flag_count_FIN += 1
-            if syn:
-                self.flag_count_SYN += 1
-            if rst:
-                self.flag_count_RST += 1
-            if psh:
-                self.flag_count_PSH += 1
-            if ack:
-                self.flag_count_ACK += 1
-            if urg:
-                self.flag_count_URG += 1
-            if cwe:
-                self.flag_count_CWE += 1
-            if ece:
-                self.flag_count_ECE += 1
+            if fin: self.flag_count_FIN += 1
+            if syn: self.flag_count_SYN += 1
+            if rst: self.flag_count_RST += 1
+            if psh: self.flag_count_PSH += 1
+            if ack: self.flag_count_ACK += 1
+            if urg: self.flag_count_URG += 1
+            if cwe: self.flag_count_CWE += 1
+            if ece: self.flag_count_ECE += 1
 
         if self.src_ip == packet_key[0]: # Forward flow
-            if psh:
-                self.fwd_PSH_flags += 1
-            if urg:
-                self.fwd_URG_flags += 1
+            if psh: self.fwd_PSH_flags += 1
+            if urg: self.fwd_URG_flags += 1
         elif self.dst_ip == packet_key[0]: # Backward flow
-            if psh:
-                self.bwd_PSH_flags += 1
-            if urg:
-                self.bwd_URG_flags += 1
+            if psh: self.bwd_PSH_flags += 1
+            if urg: self.bwd_URG_flags += 1
 
     def get_initial_timestamp(self):
         """Timestamp of flow initialization"""

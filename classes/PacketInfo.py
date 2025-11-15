@@ -144,8 +144,7 @@ class PacketInfo:
         Extract window size from a network packet that is given
         Packet window size - amount of data that a receiver is ready to accept in a TCP connection
         """
-        if packet.haslayer(TCP):
-            self.window_size = packet[0].window
+        if packet.haslayer(TCP): self.window_size = packet[0].window
 
     def get_window_size(self) -> int:
         return self.window_size
@@ -155,8 +154,7 @@ class PacketInfo:
         if packet.haslayer(TCP):
             tcp_flags = packet[TCP].flags
             flag_arr = [flags[x] for x in tcp_flags]
-            if 'FIN' in flag_arr:
-                self.FIN_flag = True
+            if 'FIN' in flag_arr: self.FIN_flag = True
 
     def get_fin_flag(self):
         return self.FIN_flag
@@ -166,8 +164,7 @@ class PacketInfo:
         if packet.haslayer(TCP):
             tcp_flags = packet[TCP].flags
             flag_arr = [flags[x] for x in tcp_flags]
-            if 'SYN' in flag_arr:
-                self.SYN_flag = True
+            if 'SYN' in flag_arr: self.SYN_flag = True
 
     def get_syn_flag(self):
         return self.SYN_flag
@@ -177,8 +174,7 @@ class PacketInfo:
         if packet.haslayer(TCP):
             tcp_flags = packet[TCP].flags
             flag_arr = [flags[x] for x in tcp_flags]
-            if 'RST' in flag_arr:
-                self.RST_flag = True
+            if 'RST' in flag_arr: self.RST_flag = True
 
     def get_rst_flag(self):
         return self.RST_flag
@@ -188,8 +184,7 @@ class PacketInfo:
         if packet.haslayer(TCP):
             tcp_flags = packet[TCP].flags
             flag_arr = [flags[x] for x in tcp_flags]
-            if 'PSH' in flag_arr:
-                self.PSH_flag = True
+            if 'PSH' in flag_arr: self.PSH_flag = True
 
     def get_psh_flag(self):
         return self.PSH_flag
@@ -199,8 +194,7 @@ class PacketInfo:
         if packet.haslayer(TCP):
             tcp_flags = packet[TCP].flags
             flag_arr = [flags[x] for x in tcp_flags]
-            if 'ACK' in flag_arr:
-                self.ACK_flag = True
+            if 'ACK' in flag_arr: self.ACK_flag = True
 
     def get_ack_flag(self):
         return self.ACK_flag
@@ -210,8 +204,7 @@ class PacketInfo:
         if packet.haslayer(TCP):
             tcp_flags = packet[TCP].flags
             flag_arr = [flags[x] for x in tcp_flags]
-            if 'URG' in flag_arr:
-                self.URG_flag = True
+            if 'URG' in flag_arr: self.URG_flag = True
 
     def get_urg_flag(self):
         return self.URG_flag
@@ -221,8 +214,7 @@ class PacketInfo:
         if packet.haslayer(TCP):
             tcp_flags = packet[TCP].flags
             flag_arr = [flags[x] for x in tcp_flags]
-            if 'CWE' in flag_arr:
-                self.CWE_flag = True
+            if 'CWE' in flag_arr: self.CWE_flag = True
 
     def get_cwe_flag(self):
         return self.CWE_flag
@@ -232,8 +224,7 @@ class PacketInfo:
         if packet.haslayer(TCP):
             tcp_flags = packet[TCP].flags
             flag_arr = [flags[x] for x in tcp_flags]
-            if 'ECE' in flag_arr:
-                self.ECE_flag = True
+            if 'ECE' in flag_arr: self.ECE_flag = True
 
     def get_ece_flag(self):
         return self.ECE_flag
