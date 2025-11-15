@@ -150,9 +150,10 @@ class FlowClassifier:
         predictions = self.detector.predict(stats)
         if predictions == 1:
             return "Normal"
-        elif predictions == 0:
+        elif predictions == -1:
             return "Anomalous"
         else:
+            print(predictions)
             return "Undefined"
 
     @staticmethod
