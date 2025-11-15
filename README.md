@@ -1,7 +1,50 @@
 # Flow_analysis
 A real time flow analysis tool that collects transport layer protocol metadata and analyzes it for anomalies
 
-## Installation
+# Installation
+
+## Windows
+
+Tested on Windows 10
+
+1. Install prerequisites:
+    1.1 Python - 
+    1.2. Git - 
+    1.3. Npcap - 
+
+2. Open `cmd`.
+
+3. Create and `cd` into folder for git repos:
+
+`mkdir git && cd git`
+
+4. Clone Flow_analysis repo:
+
+`git clone https://github.com/KostasEreksonas/Flow_analysis.git`
+
+5. Create Python virtual environment:
+
+`python3 -m venv env`
+
+6. Activate venv:
+
+`cd env\Scripts && activate && cd ..\..\`
+
+7. Install requirements:
+
+`pip install -r requirements_windows.txt`
+
+8. Launch webserver:
+
+`python3 webserver.py`
+
+9. Start interface from a web browser:
+
+`127.0.0.1:8000`
+
+## Linux
+
+Tested on Arch Linux
 
 1. Create virtual environment:
 
