@@ -9,8 +9,8 @@ Tested on Windows 10
 
 1. Install prerequisite packages:
     * Python - https://www.python.org/ftp/python/pymanager/python-manager-25.0.msix
-    * 1.2. Git - https://github.com/git-for-windows/git/releases/download/v2.51.2.windows.1/Git-2.51.2-64-bit.exe
-    * 1.3. Npcap - https://npcap.com/dist/npcap-1.84.exe
+    * Git - https://github.com/git-for-windows/git/releases/download/v2.51.2.windows.1/Git-2.51.2-64-bit.exe
+    * Npcap - https://npcap.com/dist/npcap-1.84.exe
 
 2. Open Powershell.
 
