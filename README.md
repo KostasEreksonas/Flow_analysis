@@ -7,36 +7,36 @@ A real time flow analysis tool that collects transport layer protocol metadata a
 
 Tested on Windows 10
 
-1. Install prerequisites:
+1. Install prerequisite packages:
     1.1 Python - https://www.python.org/ftp/python/pymanager/python-manager-25.0.msix
     1.2. Git - https://github.com/git-for-windows/git/releases/download/v2.51.2.windows.1/Git-2.51.2-64-bit.exe
     1.3. Npcap - https://npcap.com/dist/npcap-1.84.exe
 
-2. Open `cmd`.
+2. Open Powershell.
 
-3. Create and `cd` into folder for git repos:
+3. Create and change into folder for git repos:
 
-`mkdir git && cd git`
+`cd .\Documents\ && mkdir git && cd .\git\`
 
 4. Clone Flow_analysis repo:
 
 `git clone https://github.com/KostasEreksonas/Flow_analysis.git`
 
-5. Create Python virtual environment:
+5. Install `uv` package manager:
 
-`python3 -m venv env`
+`powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
 
-6. Activate venv:
+6. When finished, exit Powershell session and open a new one.
 
-`cd env\Scripts && activate && cd ..\..\`
+7. Change into `Flow_analysis` repo:
 
-7. Install requirements:
+`cd .\Documents\git\Flow_analysis`
 
-`pip install -r requirements_windows.txt`
+8. Run `webserver.py`:
 
-8. Launch webserver:
+`uv run webserver.py`
 
-`python3 webserver.py`
+On first run, `uv` will install required packages
 
 9. Start interface from a web browser:
 
@@ -46,30 +46,16 @@ Tested on Windows 10
 
 Tested on Arch Linux
 
-1. Create virtual environment:
+1. Check if `uv` is installed:
 
-`python3 -m venv .`
+`uv --version`
 
-2. Source virtual environment:
+2. Run `webserver.py` as root:
 
-`source bin/activate`
+`sudo uv run webserver.py`
 
-3. Install requirements:
+On first run, `uv` will install required dependencies
 
-`pip install -r requirements.txt`
-
-4. Switch to root (for Scapy packet metadata collection):
-
-`sudo su`
-
-5. Source venv as root:
-
-`source bin/activate`
-
-6. Start webserver (as root):
-
-`python3 webserver.py`
-
-7. Start interface from a web browser:
+3. Start interface from a web browser:
 
 `127.0.0.1:8000`
